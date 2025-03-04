@@ -26,12 +26,12 @@
             font-size: 20px;
             margin-top: 20px;
         }
-        #inputNome, #descricao {
+        #inputNome, #inputCargo, #descricao {
             display: none;
             margin-top: 15px;
             font-size: 16px;
         }
-        input {
+        select, input {
             width: 80%;
             padding: 8px;
             font-size: 16px;
@@ -49,6 +49,17 @@
         <button id="confirmarNome">Confirmar</button>
     </div>
 
+    <div id="inputCargo">
+        <p>Escolha seu cargo:</p>
+        <select id="cargoUsuario">
+            <option value="">Selecione...</option>
+            <option value="Programador">Programador</option>
+            <option value="Modelador">Modelador</option>
+            <option value="Animador">Animador</option>
+        </select>
+        <button id="confirmarCargo">Confirmar</button>
+    </div>
+
     <button id="startWork" style="display: none;">Entrar</button>
     <button id="stopWork" style="display: none;">Sair</button>
 
@@ -61,29 +72,36 @@
     <p id="status">Status: Aguardando...</p>
 
     <script>
-        const WEBHOOK_ENTRAR = "https://discord.com/api/webhooks/1346494589908811836/xcJiHhPdZfLCtqUXQGZ0kyo8aMM4BjfX3jBcELs_YTD-JadQok-9y4rnUJ_NLDnYwF4l";
-        const WEBHOOK_SAIR = "https://discord.com/api/webhooks/1346496913058304123/kcuAdQtXUPhNHV0YTGppJDP13lsRNiVW24l7X1-liQAH0QRvV-d1kwInmCwEprwIx1vE";
+        const WEBHOOKS = {
+            "Programador": {
+                entrada: "https://discord.com/api/webhooks/1346494589908811836/xcJiHhPdZfLCtqUXQGZ0kyo8aMM4BjfX3jBcELs_YTD-JadQok-9y4rnUJ_NLDnYwF4l",
+                saida: "https://discord.com/api/webhooks/1346496913058304123/kcuAdQtXUPhNHV0YTGppJDP13lsRNiVW24l7X1-liQAH0QRvV-d1kwInmCwEprwIx1vE"
+            },
+            "Modelador": {
+                entrada: "https://discord.com/api/webhooks/1346572191734567054/WzpW20s5hF3UwRgs4p9B1qYIxDOFJ_9yPlXUdmj-xo5J01CwXS88pDqWLI5u0zvTxySi",
+                saida: "https://discord.com/api/webhooks/1346572266837770240/RWrDwLohGEi1rLKIvkV_9Z-aMwjmcv7tHhJ6pHo85E8d7d1cfTPSBtYSVl0F5UDj3c9w"
+            },
+            "Animador": {
+                entrada: "https://discord.com/api/webhooks/1346572319589662770/QUses-ql6CpgeUb3CIoDP3JhaBMNYMgbinX92Zr_-AOsffpS8T4KOIb9VtiOHwpnLU0T",
+                saida: "https://discord.com/api/webhooks/1346572366486175856/JJU2fqRe26MFVWzoRpqrYBVmKegQkavEpNRc78QgrHpLdPfKBsZ8H8EsHLgchCtJBS0p"
+            }
+        };
+
         const META_HORAS = 120 * 3600;
 
         $(document).ready(function () {
             let nomeUsuario = localStorage.getItem("nomeUsuario");
+            let cargoUsuario = localStorage.getItem("cargoUsuario");
             let startTime = localStorage.getItem("startTime");
             let startDate = localStorage.getItem("startDate");
             let totalHorasMensais = parseFloat(localStorage.getItem("totalHorasMensais")) || 0;
 
-            if (!nomeUsuario || nomeUsuario === "null") {
+            if (!nomeUsuario) {
                 $("#inputNome").show();
+            } else if (!cargoUsuario) {
+                $("#inputCargo").show();
             } else {
-                $("#inputNome").hide();
                 $("#startWork").show();
-            }
-
-            if (startTime && startDate) {
-                $("#startWork").hide();
-                $("#stopWork").show();
-                $("#status").text(`Status: ${nomeUsuario} está trabalhando desde ${startDate} às ${new Date(parseInt(startTime)).toLocaleTimeString()}`);
-            } else {
-                atualizarHorasFaltando();
             }
 
             $("#confirmarNome").click(function () {
@@ -91,8 +109,16 @@
                 if (nome) {
                     localStorage.setItem("nomeUsuario", nome);
                     $("#inputNome").hide();
+                    $("#inputCargo").show();
+                }
+            });
+
+            $("#confirmarCargo").click(function () {
+                let cargo = $("#cargoUsuario").val();
+                if (cargo) {
+                    localStorage.setItem("cargoUsuario", cargo);
+                    $("#inputCargo").hide();
                     $("#startWork").show();
-                    atualizarHorasFaltando();
                 }
             });
 
@@ -101,15 +127,21 @@
                 startTime = now.getTime();
                 startDate = now.toLocaleDateString();
                 nomeUsuario = localStorage.getItem("nomeUsuario");
+                cargoUsuario = localStorage.getItem("cargoUsuario");
+
+                if (!WEBHOOKS[cargoUsuario]) {
+                    alert("Erro: Cargo inválido.");
+                    return;
+                }
 
                 localStorage.setItem("startTime", startTime);
                 localStorage.setItem("startDate", startDate);
 
                 $("#startWork").hide();
                 $("#stopWork").show();
-                $("#status").text(`Status: ${nomeUsuario} está trabalhando desde ${startDate} às ${new Date(startTime).toLocaleTimeString()}`);
+                $("#status").text(`Status: ${nomeUsuario} (${cargoUsuario}) está trabalhando desde ${startDate} às ${new Date(startTime).toLocaleTimeString()}`);
 
-                enviarMensagem(WEBHOOK_ENTRAR, `🟢 **${nomeUsuario} começou a trabalhar**\n📅 Data: ${startDate}\n⏰ Hora: ${new Date(startTime).toLocaleTimeString()}`);
+                enviarMensagem(WEBHOOKS[cargoUsuario].entrada, `🟢 **${nomeUsuario} (${cargoUsuario}) começou a trabalhar**\n📅 Data: ${startDate}\n⏰ Hora: ${new Date(startTime).toLocaleTimeString()}`);
             });
 
             $("#stopWork").click(function () {
@@ -130,6 +162,13 @@
                 let segundos = Math.floor(totalTime % 60);
 
                 nomeUsuario = localStorage.getItem("nomeUsuario");
+                cargoUsuario = localStorage.getItem("cargoUsuario");
+
+                if (!WEBHOOKS[cargoUsuario]) {
+                    alert("Erro: Cargo inválido.");
+                    return;
+                }
+
                 let atividade = $("#atividade").val().trim() || "Não especificado";
 
                 totalHorasMensais += totalTime;
@@ -146,21 +185,8 @@
                 $("#startWork").show();
                 $("#descricao").hide();
 
-                $("#status").html(`Faltam para você fazer 120 horas ao mês:<br>
-                    ⏳ ${horasFaltando} horas<br>
-                    ⏳ ${minutosFaltando} minutos<br>
-                    ⏳ ${segundosRestantes} segundos`);
-
-                enviarMensagem(WEBHOOK_SAIR, `🔴 **${nomeUsuario} encerrou o trabalho**\n📅 Data: ${endDate}\n⏰ Hora: ${now.toLocaleTimeString()}\n⏳ Tempo total: ${horas} horas, ${minutos} minutos, ${segundos} segundos\n📝 Atividade: ${atividade}\n🕒 Total acumulado no mês: ${(totalHorasMensais / 3600).toFixed(2)} horas\n\n🎯 Faltam para 120 horas:\n⏳ ${horasFaltando} horas\n⏳ ${minutosFaltando} minutos\n⏳ ${segundosRestantes} segundos`);
+                enviarMensagem(WEBHOOKS[cargoUsuario].saida, `🔴 **${nomeUsuario} (${cargoUsuario}) encerrou o trabalho**\n📅 Data: ${endDate}\n⏰ Hora: ${now.toLocaleTimeString()}\n⏳ Tempo total: ${horas}h ${minutos}m ${segundos}s\n📝 Atividade: ${atividade}\n🎯 Faltam para 120 horas:\n⏳ ${horasFaltando}h\n⏳ ${minutosFaltando}m\n⏳ ${segundosRestantes}s`);
             });
-
-            function atualizarHorasFaltando() {
-                let segundosFaltando = Math.max(META_HORAS - totalHorasMensais, 0);
-                let horasFaltando = Math.floor(segundosFaltando / 3600);
-                let minutosFaltando = Math.floor((segundosFaltando % 3600) / 60);
-                let segundosRestantes = Math.floor(segundosFaltando % 60);
-                $("#status").html(`Faltam para você fazer 120 horas ao mês:<br>⏳ ${horasFaltando} horas<br>⏳ ${minutosFaltando} minutos<br>⏳ ${segundosRestantes} segundos`);
-            }
 
             function enviarMensagem(webhook, mensagem) {
                 fetch(webhook, {
