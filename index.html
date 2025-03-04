@@ -5,11 +5,16 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Ponto de Trabalho</title>
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;700&display=swap" rel="stylesheet">
     <style>
         body {
-            font-family: Arial, sans-serif;
+            font-family: "Kanit", sans-serif;
             text-align: center;
             padding: 20px;
+            background-color: rgb(38, 38, 38);
+            color: white;
         }
         button {
             font-size: 18px;
@@ -21,58 +26,117 @@
             font-size: 20px;
             margin-top: 20px;
         }
+        #inputNome, #descricao {
+            display: none;
+            margin-top: 15px;
+            font-size: 16px;
+        }
+        input {
+            width: 80%;
+            padding: 8px;
+            font-size: 16px;
+            margin-bottom: 10px;
+        }
     </style>
 </head>
 <body>
 
-    <h1>Ponto de Trabalho</h1>
-    <button id="startWork">Começar a Trabalhar</button>
-    <button id="stopWork" disabled>Parar de Trabalhar</button>
+    <h1>Bater Ponto</h1>
+
+    <div id="inputNome">
+        <p>Digite seu nome:</p>
+        <input type="text" id="nomeUsuario" placeholder="Seu nome..." />
+        <button id="confirmarNome">Confirmar</button>
+    </div>
+
+    <button id="startWork" style="display: none;">Entrar</button>
+    <button id="stopWork" style="display: none;">Sair</button>
+
+    <div id="descricao">
+        <p>O que você fez?</p>
+        <input type="text" id="atividade" placeholder="Descreva sua atividade..." />
+        <button id="enviarSaida">Confirmar Saída</button>
+    </div>
+
     <p id="status">Status: Aguardando...</p>
 
     <script>
-        const WEBHOOK_URL = "https://discord.com/api/webhooks/1346494589908811836/xcJiHhPdZfLCtqUXQGZ0kyo8aMM4BjfX3jBcELs_YTD-JadQok-9y4rnUJ_NLDnYwF4l";
+        const WEBHOOK_ENTRAR = "https://discord.com/api/webhooks/1346494589908811836/xcJiHhPdZfLCtqUXQGZ0kyo8aMM4BjfX3jBcELs_YTD-JadQok-9y4rnUJ_NLDnYwF4l";
+        const WEBHOOK_SAIR = "https://discord.com/api/webhooks/1346496913058304123/kcuAdQtXUPhNHV0YTGppJDP13lsRNiVW24l7X1-liQAH0QRvV-d1kwInmCwEprwIx1vE";
+
 
         $(document).ready(function () {
+            let nomeUsuario = localStorage.getItem("nomeUsuario");
             let startTime = localStorage.getItem("startTime");
+            let startDate = localStorage.getItem("startDate");
 
-            if (startTime) {
-                $("#startWork").prop("disabled", true);
-                $("#stopWork").prop("disabled", false);
-                $("#status").text("Status: Trabalhando desde " + new Date(parseInt(startTime)).toLocaleTimeString());
+            if (!nomeUsuario) {
+                $("#inputNome").show();
+            } else {
+                $("#startWork").show();
             }
 
-            $("#startWork").click(function () {
-                startTime = new Date().getTime();
-                localStorage.setItem("startTime", startTime);
-                $("#startWork").prop("disabled", true);
-                $("#stopWork").prop("disabled", false);
-                $("#status").text("Status: Trabalhando desde " + new Date(startTime).toLocaleTimeString());
+            if (startTime && startDate) {
+                $("#startWork").hide();
+                $("#stopWork").show();
+                $("#status").text(`Status: ${nomeUsuario} está trabalhando desde ${startDate} às ${new Date(parseInt(startTime)).toLocaleTimeString()}`);
+            }
 
-                enviarMensagem("🟢 Início do trabalho: " + new Date(startTime).toLocaleTimeString());
+            $("#confirmarNome").click(function () {
+                let nome = $("#nomeUsuario").val().trim();
+                if (nome) {
+                    localStorage.setItem("nomeUsuario", nome);
+                    $("#inputNome").hide();
+                    $("#startWork").show();
+                }
+            });
+
+            $("#startWork").click(function () {
+                let now = new Date();
+                startTime = now.getTime();
+                startDate = now.toLocaleDateString();
+
+                localStorage.setItem("startTime", startTime);
+                localStorage.setItem("startDate", startDate);
+
+                $("#startWork").hide();
+                $("#stopWork").show();
+                $("#status").text(`Status: ${nomeUsuario} está trabalhando desde ${startDate} às ${new Date(startTime).toLocaleTimeString()}`);
+
+                enviarMensagem(WEBHOOK_ENTRAR, `🟢 **${nomeUsuario} começou a trabalhar**\n📅 Data: ${startDate}\n⏰ Hora: ${new Date(startTime).toLocaleTimeString()}`);
             });
 
             $("#stopWork").click(function () {
-                if (!startTime) return;
+                $("#stopWork").hide();
+                $("#descricao").show();
+            });
 
-                let endTime = new Date().getTime();
-                let totalTime = (endTime - startTime) / 1000 / 60; 
+            $("#enviarSaida").click(function () {
+                if (!startTime || !startDate) return;
+
+                let now = new Date();
+                let endTime = now.getTime();
+                let endDate = now.toLocaleDateString();
+                let totalTime = (endTime - startTime) / 1000 / 60; // Minutos
                 let horas = Math.floor(totalTime / 60);
                 let minutos = Math.floor(totalTime % 60);
                 let tempoTrabalhado = `${horas}h ${minutos}m`;
 
-                localStorage.removeItem("startTime");
-                $("#startWork").prop("disabled", false);
-                $("#stopWork").prop("disabled", true);
-                $("#status").text("Status: Não está trabalhando");
+                let atividade = $("#atividade").val().trim() || "Não especificado";
 
-                enviarMensagem("🔴 Fim do trabalho: " + new Date(endTime).toLocaleTimeString() + 
-                              "\n⏳ Tempo total: " + tempoTrabalhado);
+                localStorage.removeItem("startTime");
+                localStorage.removeItem("startDate");
+
+                $("#startWork").show();
+                $("#descricao").hide();
+                $("#status").text(`Status: ${nomeUsuario} não está trabalhando`);
+
+                enviarMensagem(WEBHOOK_SAIR, `🔴 **${nomeUsuario} encerrou o trabalho**\n📅 Data: ${endDate}\n⏰ Hora: ${now.toLocaleTimeString()}\n⏳ Tempo total: ${tempoTrabalhado}\n📝 Atividade: ${atividade}`);
             });
 
-            function enviarMensagem(mensagem) {
+            function enviarMensagem(webhook, mensagem) {
                 $.ajax({
-                    url: WEBHOOK_URL,
+                    url: webhook,
                     type: "POST",
                     contentType: "application/json",
                     data: JSON.stringify({ content: mensagem })
