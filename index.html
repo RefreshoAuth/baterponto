@@ -63,7 +63,7 @@
     <script>
         const WEBHOOK_ENTRAR = "https://discord.com/api/webhooks/1346494589908811836/xcJiHhPdZfLCtqUXQGZ0kyo8aMM4BjfX3jBcELs_YTD-JadQok-9y4rnUJ_NLDnYwF4l";
         const WEBHOOK_SAIR = "https://discord.com/api/webhooks/1346496913058304123/kcuAdQtXUPhNHV0YTGppJDP13lsRNiVW24l7X1-liQAH0QRvV-d1kwInmCwEprwIx1vE";
-        const META_HORAS = 120; 
+        const META_HORAS = 120 * 3600;
 
         $(document).ready(function () {
             let nomeUsuario = localStorage.getItem("nomeUsuario");
@@ -71,7 +71,6 @@
             let startDate = localStorage.getItem("startDate");
             let totalHorasMensais = parseFloat(localStorage.getItem("totalHorasMensais")) || 0;
 
-            
             if (!nomeUsuario || nomeUsuario === "null") {
                 $("#inputNome").show();
             } else {
@@ -84,8 +83,7 @@
                 $("#stopWork").show();
                 $("#status").text(`Status: ${nomeUsuario} está trabalhando desde ${startDate} às ${new Date(parseInt(startTime)).toLocaleTimeString()}`);
             } else {
-                let horasFaltando = Math.max(META_HORAS - totalHorasMensais, 0);
-                $("#status").text(`Status: ${nomeUsuario || "Usuário"} não está trabalhando. Faltam ${horasFaltando.toFixed(1)}h para atingir 120h no mês.`);
+                atualizarHorasFaltando();
             }
 
             $("#confirmarNome").click(function () {
@@ -94,7 +92,7 @@
                     localStorage.setItem("nomeUsuario", nome);
                     $("#inputNome").hide();
                     $("#startWork").show();
-                    $("#status").text(`Status: ${nome} não está trabalhando. Faltam ${Math.max(META_HORAS - totalHorasMensais, 0).toFixed(1)}h para atingir 120h no mês.`);
+                    atualizarHorasFaltando();
                 }
             });
 
@@ -102,7 +100,7 @@
                 let now = new Date();
                 startTime = now.getTime();
                 startDate = now.toLocaleDateString();
-                nomeUsuario = localStorage.getItem("nomeUsuario"); 
+                nomeUsuario = localStorage.getItem("nomeUsuario");
 
                 localStorage.setItem("startTime", startTime);
                 localStorage.setItem("startDate", startDate);
@@ -125,36 +123,50 @@
                 let now = new Date();
                 let endTime = now.getTime();
                 let endDate = now.toLocaleDateString();
-                let totalTime = (endTime - startTime) / 1000 / 60; 
-                let horas = Math.floor(totalTime / 60);
-                let minutos = Math.floor(totalTime % 60);
-                let tempoTrabalhado = horas + minutos / 60;
-                nomeUsuario = localStorage.getItem("nomeUsuario");
+                let totalTime = (endTime - startTime) / 1000;
 
+                let horas = Math.floor(totalTime / 3600);
+                let minutos = Math.floor((totalTime % 3600) / 60);
+                let segundos = Math.floor(totalTime % 60);
+
+                nomeUsuario = localStorage.getItem("nomeUsuario");
                 let atividade = $("#atividade").val().trim() || "Não especificado";
 
-                // Atualiza o total de horas mensais
-                totalHorasMensais += tempoTrabalhado;
+                totalHorasMensais += totalTime;
                 localStorage.setItem("totalHorasMensais", totalHorasMensais);
 
-                let horasFaltando = Math.max(META_HORAS - totalHorasMensais, 0);
+                let segundosFaltando = Math.max(META_HORAS - totalHorasMensais, 0);
+                let horasFaltando = Math.floor(segundosFaltando / 3600);
+                let minutosFaltando = Math.floor((segundosFaltando % 3600) / 60);
+                let segundosRestantes = Math.floor(segundosFaltando % 60);
 
                 localStorage.removeItem("startTime");
                 localStorage.removeItem("startDate");
 
                 $("#startWork").show();
                 $("#descricao").hide();
-                $("#status").text(`Status: ${nomeUsuario} não está trabalhando. Faltam ${horasFaltando.toFixed(1)}h para atingir 120h no mês.`);
 
-                enviarMensagem(WEBHOOK_SAIR, `🔴 **${nomeUsuario} encerrou o trabalho**\n📅 Data: ${endDate}\n⏰ Hora: ${now.toLocaleTimeString()}\n⏳ Tempo total: ${horas}h ${minutos}m\n📝 Atividade: ${atividade}\n🕒 Total acumulado no mês: ${totalHorasMensais.toFixed(1)}h\n🎯 Faltam ${horasFaltando.toFixed(1)}h para atingir 120h.`);
+                $("#status").html(`Faltam para você fazer 120 horas ao mês:<br>
+                    ⏳ ${horasFaltando} horas<br>
+                    ⏳ ${minutosFaltando} minutos<br>
+                    ⏳ ${segundosRestantes} segundos`);
+
+                enviarMensagem(WEBHOOK_SAIR, `🔴 **${nomeUsuario} encerrou o trabalho**\n📅 Data: ${endDate}\n⏰ Hora: ${now.toLocaleTimeString()}\n⏳ Tempo total: ${horas} horas, ${minutos} minutos, ${segundos} segundos\n📝 Atividade: ${atividade}\n🕒 Total acumulado no mês: ${(totalHorasMensais / 3600).toFixed(2)} horas\n\n🎯 Faltam para 120 horas:\n⏳ ${horasFaltando} horas\n⏳ ${minutosFaltando} minutos\n⏳ ${segundosRestantes} segundos`);
             });
 
+            function atualizarHorasFaltando() {
+                let segundosFaltando = Math.max(META_HORAS - totalHorasMensais, 0);
+                let horasFaltando = Math.floor(segundosFaltando / 3600);
+                let minutosFaltando = Math.floor((segundosFaltando % 3600) / 60);
+                let segundosRestantes = Math.floor(segundosFaltando % 60);
+                $("#status").html(`Faltam para você fazer 120 horas ao mês:<br>⏳ ${horasFaltando} horas<br>⏳ ${minutosFaltando} minutos<br>⏳ ${segundosRestantes} segundos`);
+            }
+
             function enviarMensagem(webhook, mensagem) {
-                $.ajax({
-                    url: webhook,
-                    type: "POST",
-                    contentType: "application/json",
-                    data: JSON.stringify({ content: mensagem })
+                fetch(webhook, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ content: mensagem })
                 });
             }
         });
