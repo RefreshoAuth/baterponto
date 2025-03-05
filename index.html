@@ -97,160 +97,159 @@
         const META_HORAS = 120 * 3600;
 
         $(document).ready(function () {
-            let nomeUsuario = localStorage.getItem("nomeUsuario");
-            let cargoUsuario = localStorage.getItem("cargoUsuario");
-            let startTime = localStorage.getItem("startTime");
-            let startDate = localStorage.getItem("startDate");
-            let totalHorasMensais = parseFloat(localStorage.getItem("totalHorasMensais")) || 0;
+    let nomeUsuario = localStorage.getItem("nomeUsuario");
+    let cargoUsuario = localStorage.getItem("cargoUsuario");
+    let startTime = localStorage.getItem("startTime");
+    let startDate = localStorage.getItem("startDate");
+    let totalHorasMensais = parseFloat(localStorage.getItem("totalHorasMensais")) || 0;
 
-            if (!nomeUsuario) {
-                $("#inputNome").show();
-            } else if (!cargoUsuario) {
-                $("#inputCargo").show();
-            } else {
-                $("#startWork").show();
-            }
+    // Se já estiver trabalhando (startTime definido) e usuário existir
+    if (startTime && nomeUsuario && cargoUsuario) {
+        $("#stopWork").show(); // mostra o botão de "Sair"
+        $("#status").text(`Status: ${nomeUsuario} (${cargoUsuario}) está trabalhando desde ${new Date(parseInt(startTime)).toLocaleDateString()} às ${new Date(parseInt(startTime)).toLocaleTimeString()}`);
+    } else if (!nomeUsuario) {
+        $("#inputNome").show();
+    } else if (!cargoUsuario) {
+        $("#inputCargo").show();
+    } else {
+        $("#startWork").show();
+    }
 
-            $("#confirmarNome").click(function () {
-                let nome = $("#nomeUsuario").val().trim();
-                if (nome) {
-                    localStorage.setItem("nomeUsuario", nome);
-                    $("#inputNome").hide();
-                    $("#inputCargo").show();
-                }
-            });
+    // Resto do código permanece o mesmo...
+    $("#confirmarNome").click(function () {
+        let nome = $("#nomeUsuario").val().trim();
+        if (nome) {
+            localStorage.setItem("nomeUsuario", nome);
+            $("#inputNome").hide();
+            $("#inputCargo").show();
+        }
+    });
 
-            $("#confirmarCargo").click(function () {
-                let cargo = $("#cargoUsuario").val();
-                if (cargo) {
-                    localStorage.setItem("cargoUsuario", cargo);
-                    $("#inputCargo").hide();
-                    $("#startWork").show();
-                }
-            });
+    $("#confirmarCargo").click(function () {
+        let cargo = $("#cargoUsuario").val();
+        if (cargo) {
+            localStorage.setItem("cargoUsuario", cargo);
+            $("#inputCargo").hide();
+            $("#startWork").show();
+        }
+    });
 
-            $("#startWork").click(function () {
-                let now = new Date();
-                startTime = now.getTime();
-                startDate = now.toLocaleDateString();
-                nomeUsuario = localStorage.getItem("nomeUsuario");
-                cargoUsuario = localStorage.getItem("cargoUsuario");
+    $("#startWork").click(function () {
+        let now = new Date();
+        startTime = now.getTime();
+        startDate = now.toLocaleDateString();
+        nomeUsuario = localStorage.getItem("nomeUsuario");
+        cargoUsuario = localStorage.getItem("cargoUsuario");
 
-                if (!WEBHOOKS[cargoUsuario]) {
-                    alert("Erro: Cargo inválido.");
-                    return;
-                }
-
-                localStorage.setItem("startTime", startTime);
-                localStorage.setItem("startDate", startDate);
-
-                $("#startWork").hide();
-                $("#stopWork").show();
-                $("#status").text(`Status: ${nomeUsuario} (${cargoUsuario}) está trabalhando desde ${startDate} às ${new Date(startTime).toLocaleTimeString()}`);
-
-                enviarMensagem(WEBHOOKS[cargoUsuario].entrada, `🟢 **${nomeUsuario} (${cargoUsuario}) começou a trabalhar**\n📅 Data: ${startDate}\n⏰ Hora: ${new Date(startTime).toLocaleTimeString()}`);
-            });
-
-            $("#stopWork").click(function () {
-                $("#stopWork").hide();
-                $("#descricao").show();
-            });
-
-            $("#enviarSaida").click(async function () {
-                if (!startTime || !startDate) return;
-                let imagens = $("#imageUpload")[0].files;
-                console.log(imagens); // Verifique quantos arquivos estão sendo retornados
-
-
-
-                if (imagens.length === 0) {
-                    alert("Você precisa enviar pelo menos uma imagem como prova!");
-                    return;
-                }
-
-
-                let now = new Date();
-                let endTime = now.getTime();
-                let endDate = now.toLocaleDateString();
-                let totalTime = (endTime - startTime) / 1000;
-
-                let horas = Math.floor(totalTime / 3600);
-                let minutos = Math.floor((totalTime % 3600) / 60);
-                let segundos = Math.floor(totalTime % 60);
-
-                nomeUsuario = localStorage.getItem("nomeUsuario");
-                cargoUsuario = localStorage.getItem("cargoUsuario");
-
-                if (!WEBHOOKS[cargoUsuario]) {
-                    alert("Erro: Cargo inválido.");
-                    return;
-                }
-
-                let atividade = $("#atividade").val().trim() || "Não especificado";
-
-                totalHorasMensais += totalTime;
-                localStorage.setItem("totalHorasMensais", totalHorasMensais);
-                let urlsImagens = await uploadImagensParaImgur(imagens);
-
-
-                let segundosFaltando = Math.max(META_HORAS - totalHorasMensais, 0);
-                let horasFaltando = Math.floor(segundosFaltando / 3600);
-                let minutosFaltando = Math.floor((segundosFaltando % 3600) / 60);
-                let segundosRestantes = Math.floor(segundosFaltando % 60);
-
-                localStorage.removeItem("startTime");
-                localStorage.removeItem("startDate");
-
-                $("#startWork").show();
-                $("#descricao").hide();
-                
-                enviarMensagem(WEBHOOKS[cargoUsuario].saida, 
-                `🔴 **${nomeUsuario} (${cargoUsuario}) encerrou o trabalho**\n📅 Data: ${endDate}\n⏰ Hora: ${now.toLocaleTimeString()}\n⏳ Tempo total: ${horas}h ${minutos}m ${segundos}s\n📝 Atividade: ${atividade}\n🎯 Faltam para 120 horas:\n⏳ ${horasFaltando}h\n⏳ ${minutosFaltando}m\n⏳ ${segundosRestantes}s\n 📸 Imagens:\n${urlsImagens.join("\n")}`
-                );
-            });
-
-            async function uploadImagensParaImgur(imagens) {
-            let urls = [];
-            for (let imagem of imagens) {
-                let formData = new FormData();
-                formData.append("image", imagem);
-
-                let response = await fetch("https://api.imgur.com/3/image", {
-                    method: "POST",
-                    headers: { Authorization: "Client-ID " + CLIENT_ID_IMGUR },
-                    body: formData
-                });
-
-                let data = await response.json();
-                if (data.success) {
-                    urls.push(data.data.link);
-                }
-            }
-            return urls;
+        if (!WEBHOOKS[cargoUsuario]) {
+            alert("Erro: Cargo inválido.");
+            return;
         }
 
-        $("#imageUpload").on("change", function() {
-            $("#preview").empty();
-            const arquivos = this.files;
-            for (let arquivo of arquivos) {
-                const reader = new FileReader();
-                reader.onload = function(e) {
-                    $("#preview").append("<img src='" + e.target.result + "' style='max-width: 100px; margin: 5px;'>");
-                }
-                reader.readAsDataURL(arquivo);
+        localStorage.setItem("startTime", startTime);
+        localStorage.setItem("startDate", startDate);
+
+        $("#startWork").hide();
+        $("#stopWork").show();
+        $("#status").text(`Status: ${nomeUsuario} (${cargoUsuario}) está trabalhando desde ${startDate} às ${new Date(startTime).toLocaleTimeString()}`);
+
+        enviarMensagem(WEBHOOKS[cargoUsuario].entrada, `🟢 **${nomeUsuario} (${cargoUsuario}) começou a trabalhar**\n📅 Data: ${startDate}\n⏰ Hora: ${new Date(startTime).toLocaleTimeString()}`);
+    });
+
+    $("#stopWork").click(function () {
+        $("#stopWork").hide();
+        $("#descricao").show();
+    });
+
+    $("#enviarSaida").click(async function () {
+        if (!startTime || !startDate) return;
+        let imagens = $("#imageUpload")[0].files;
+        console.log(imagens); // Verifique quantos arquivos estão sendo retornados
+
+        if (imagens.length === 0) {
+            alert("Você precisa enviar pelo menos uma imagem como prova!");
+            return;
+        }
+
+        let now = new Date();
+        let endTime = now.getTime();
+        let endDate = now.toLocaleDateString();
+        let totalTime = (endTime - startTime) / 1000;
+
+        let horas = Math.floor(totalTime / 3600);
+        let minutos = Math.floor((totalTime % 3600) / 60);
+        let segundos = Math.floor(totalTime % 60);
+
+        nomeUsuario = localStorage.getItem("nomeUsuario");
+        cargoUsuario = localStorage.getItem("cargoUsuario");
+
+        if (!WEBHOOKS[cargoUsuario]) {
+            alert("Erro: Cargo inválido.");
+            return;
+        }
+
+        let atividade = $("#atividade").val().trim() || "Não especificado";
+
+        totalHorasMensais += totalTime;
+        localStorage.setItem("totalHorasMensais", totalHorasMensais);
+        let urlsImagens = await uploadImagensParaImgur(imagens);
+
+        let segundosFaltando = Math.max(META_HORAS - totalHorasMensais, 0);
+        let horasFaltando = Math.floor(segundosFaltando / 3600);
+        let minutosFaltando = Math.floor((segundosFaltando % 3600) / 60);
+        let segundosRestantes = Math.floor(segundosFaltando % 60);
+
+        localStorage.removeItem("startTime");
+        localStorage.removeItem("startDate");
+
+        $("#startWork").show();
+        $("#descricao").hide();
+
+        enviarMensagem(WEBHOOKS[cargoUsuario].saida, 
+        `🔴 **${nomeUsuario} (${cargoUsuario}) encerrou o trabalho**\n📅 Data: ${endDate}\n⏰ Hora: ${now.toLocaleTimeString()}\n⏳ Tempo total: ${horas}h ${minutos}m ${segundos}s\n📝 Atividade: ${atividade}\n🎯 Faltam para 120 horas:\n⏳ ${horasFaltando}h\n⏳ ${minutosFaltando}m\n⏳ ${segundosRestantes}s\n 📸 Imagens:\n${urlsImagens.join("\n")}`);
+    });
+
+    async function uploadImagensParaImgur(imagens) {
+        let urls = [];
+        for (let imagem of imagens) {
+            let formData = new FormData();
+            formData.append("image", imagem);
+
+            let response = await fetch("https://api.imgur.com/3/image", {
+                method: "POST",
+                headers: { Authorization: "Client-ID " + CLIENT_ID_IMGUR },
+                body: formData
+            });
+
+            let data = await response.json();
+            if (data.success) {
+                urls.push(data.data.link);
             }
-        });
+        }
+        return urls;
+    }
 
-
-
-            function enviarMensagem(webhook, mensagem) {
-                fetch(webhook, {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ content: mensagem })
-                });
+    $("#imageUpload").on("change", function() {
+        $("#preview").empty();
+        const arquivos = this.files;
+        for (let arquivo of arquivos) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                $("#preview").append("<img src='" + e.target.result + "' style='max-width: 100px; margin: 5px;'>");
             }
+            reader.readAsDataURL(arquivo);
+        }
+    });
+
+    function enviarMensagem(webhook, mensagem) {
+        fetch(webhook, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ content: mensagem })
         });
+    }
+});
+
     </script>
 
 </body>
