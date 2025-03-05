@@ -13,15 +13,37 @@
             font-family: "Kanit", sans-serif;
             text-align: center;
             padding: 20px;
-            background-color: rgb(38, 38, 38);
+            background-color: #000000;
             color: white;
         }
         button {
+            font-family: "Kanit", sans-serif;
             font-size: 18px;
             padding: 10px 20px;
             margin: 10px;
             cursor: pointer;
+            
+            display: inline-block;
+                outline: 0;
+                border: 0;
+                cursor: pointer;
+                border-radius: 8px;
+                padding: 14px 24px 16px;
+                font-size: 18px;
+                font-weight: 700;
+                line-height: 1;
+                transition: transform 200ms,background 200ms;
+                background: rgb(43, 43, 43);
+                color: #ffffff;
+                
         }
+        button:hover{
+                    transform: translateY(-2px);
+                    background: rgb(255, 255, 255);
+                    color: #000000;
+                    box-shadow: 0 0 0 0 #ffffff35 inset, #1de9b6 0 0 0 2px;
+                }
+
         #status {
             font-size: 20px;
             margin-top: 20px;
@@ -30,13 +52,44 @@
             display: none;
             margin-top: 15px;
             font-size: 16px;
+            
         }
         select, input {
             width: 80%;
             padding: 8px;
             font-size: 16px;
             margin-bottom: 10px;
+            box-shadow: inset #abacaf 0 0 0 2px;
+                    border: 0;
+                    background: rgba(0, 0, 0, 0);
+                    appearance: none;
+                    border-radius: 3px;
+                    padding: 9px 12px;
+                    line-height: 1.4;
+                    color: rgb(0, 0, 0);
+                    font-size: 16px;
+                    font-weight: 400;
+                    transition: all .2s ease;
+                    color: #000000;
+                
         }
+        .select, input:hover{
+                        box-shadow: 0 0 0 0 #ffffff35 inset, #1de9b6 0 0 0 2px;
+                    }
+
+        .select, input:focus{
+        background: #ffffff27;
+        outline: 0;
+        box-shadow: 0 0 0 0 #fff inset, #1de9b6 0 0 0 3px;
+                    }
+                    #geral{
+                        height: 100%;
+    margin: 0;
+    display: flex;
+    justify-content: center; /* Centraliza horizontalmente */
+    align-items: center; /* Centraliza verticalmente */
+    text-align: center; /* Alinha o texto ao centro */
+                    }
     </style>
 </head>
 <body>
