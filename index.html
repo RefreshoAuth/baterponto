@@ -65,6 +65,11 @@
 
     <div id="descricao">
         <p>O que você fez?</p>
+
+        <p>Envie imagens como prova:</p>
+        <input type="file" id="imageUpload" multiple accept="image/*">
+        <div id="preview"></div>
+        
         <input type="text" id="atividade" placeholder="Descreva sua atividade..." />
         <button id="enviarSaida">Confirmar Saída</button>
     </div>
@@ -72,6 +77,8 @@
     <p id="status">Status: Aguardando...</p>
 
     <script>
+        const CLIENT_ID_IMGUR = "9f7a0b387998da9";
+
         const WEBHOOKS = {
             "Programador": {
                 entrada: "https://discord.com/api/webhooks/1346494589908811836/xcJiHhPdZfLCtqUXQGZ0kyo8aMM4BjfX3jBcELs_YTD-JadQok-9y4rnUJ_NLDnYwF4l",
@@ -149,8 +156,18 @@
                 $("#descricao").show();
             });
 
-            $("#enviarSaida").click(function () {
+            $("#enviarSaida").click(async function () {
                 if (!startTime || !startDate) return;
+                let imagens = $("#imageUpload")[0].files;
+                console.log(imagens); // Verifique quantos arquivos estão sendo retornados
+
+
+
+                if (imagens.length === 0) {
+                    alert("Você precisa enviar pelo menos uma imagem como prova!");
+                    return;
+                }
+
 
                 let now = new Date();
                 let endTime = now.getTime();
@@ -173,6 +190,8 @@
 
                 totalHorasMensais += totalTime;
                 localStorage.setItem("totalHorasMensais", totalHorasMensais);
+                let urlsImagens = await uploadImagensParaImgur(imagens);
+
 
                 let segundosFaltando = Math.max(META_HORAS - totalHorasMensais, 0);
                 let horasFaltando = Math.floor(segundosFaltando / 3600);
@@ -184,9 +203,45 @@
 
                 $("#startWork").show();
                 $("#descricao").hide();
-
-                enviarMensagem(WEBHOOKS[cargoUsuario].saida, `🔴 **${nomeUsuario} (${cargoUsuario}) encerrou o trabalho**\n📅 Data: ${endDate}\n⏰ Hora: ${now.toLocaleTimeString()}\n⏳ Tempo total: ${horas}h ${minutos}m ${segundos}s\n📝 Atividade: ${atividade}\n🎯 Faltam para 120 horas:\n⏳ ${horasFaltando}h\n⏳ ${minutosFaltando}m\n⏳ ${segundosRestantes}s`);
+                
+                enviarMensagem(WEBHOOKS[cargoUsuario].saida, 
+                `🔴 **${nomeUsuario} (${cargoUsuario}) encerrou o trabalho**\n📅 Data: ${endDate}\n⏰ Hora: ${now.toLocaleTimeString()}\n⏳ Tempo total: ${horas}h ${minutos}m ${segundos}s\n📝 Atividade: ${atividade}\n🎯 Faltam para 120 horas:\n⏳ ${horasFaltando}h\n⏳ ${minutosFaltando}m\n⏳ ${segundosRestantes}s\n 📸 Imagens:\n${urlsImagens.join("\n")}`
+                );
             });
+
+            async function uploadImagensParaImgur(imagens) {
+            let urls = [];
+            for (let imagem of imagens) {
+                let formData = new FormData();
+                formData.append("image", imagem);
+
+                let response = await fetch("https://api.imgur.com/3/image", {
+                    method: "POST",
+                    headers: { Authorization: "Client-ID " + CLIENT_ID_IMGUR },
+                    body: formData
+                });
+
+                let data = await response.json();
+                if (data.success) {
+                    urls.push(data.data.link);
+                }
+            }
+            return urls;
+        }
+
+        $("#imageUpload").on("change", function() {
+            $("#preview").empty();
+            const arquivos = this.files;
+            for (let arquivo of arquivos) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    $("#preview").append("<img src='" + e.target.result + "' style='max-width: 100px; margin: 5px;'>");
+                }
+                reader.readAsDataURL(arquivo);
+            }
+        });
+
+
 
             function enviarMensagem(webhook, mensagem) {
                 fetch(webhook, {
